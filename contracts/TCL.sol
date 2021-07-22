@@ -150,16 +150,19 @@ contract TCL is IUniswapV3MintCallback {
     }
 
     /// @dev Token0 and Token1 amounts held by TCL in the pool
-    function getTreasuryPositionAmounts(int24 tickLower, int24 tickUpper)
+    function getTreasuryPositionAmounts()
         public
         view
         returns (uint256 amount0, uint256 amount1)
     {
-        (uint128 liquidity, , , , ) = _positionKeyInfo(tickLower, tickUpper);
+        (uint128 liquidity, , , , ) = _positionKeyInfo(
+            tickPositionLower,
+            tickPositionUpper
+        );
 
         (amount0, amount1) = _amountsForLiquidity(
-            tickLower,
-            tickUpper,
+            tickPositionUpper,
+            tickPositionUpper,
             liquidity
         );
     }
