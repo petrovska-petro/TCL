@@ -1,0 +1,12 @@
+__pycache__
+.pytest_cache
+
+.history
+.hypothesis/
+build/
+reports/
+
+OpenZeppelin/
+Uniswap/
+
+node_modules/
