@@ -231,7 +231,16 @@ contract TCL is IUniswapV3MintCallback {
         if (amount0 > 0) token0.safeTransfer(msg.sender, amount0);
         if (amount1 > 0) token1.safeTransfer(msg.sender, amount1);
     }
+    
+    /// @dev Removes available liquidity from TCL to another destination
+    function transferLiquidity(address _destination) external onlyOwner {
+        uint256 balance0 = balanceToken0();
+        uint256 balance1 = balanceToken1();
 
+        token0.safeTransfer(_destination, balance0);
+        token1.safeTransfer(_destination, balance1);
+    }
+ 
     /// @dev Removes all liquidity from pool into contract
     function emergencyLiquidityRemoval(
         int24 tickLower,
