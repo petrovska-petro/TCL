@@ -1,8 +1,8 @@
-## Treasury Controlled Liquidity
+## Treasury Controlled Liquidity
 
 The scope of the contracts is to manage the liquidity provided by the treasury in Uniswap v3 pool.
 
-## WIP 
+## WIP 
 
 Pendant of adding tests/ and define the pull in/out strategy to be followed by the scripts.
 
