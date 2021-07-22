@@ -114,7 +114,7 @@ contract TCL is IUniswapV3MintCallback {
         uint256 _targetBound,
         bool _pullOutAndIn
     ) internal {
-        require(_targetBound <= positionsLength, "positionsLength!");
+        require(_targetBound < positionsLength, "positionsLength!");
         _healthyRange(_tickPositionLower, _tickPositionUpper);
 
         (, int24 tick, , , , , ) = pool.slot0();
