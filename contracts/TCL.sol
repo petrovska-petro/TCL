@@ -16,15 +16,25 @@ contract TCL is IUniswapV3MintCallback {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
+    struct PositionInfo {
+        int24 tickLower;
+        int24 tickUpper;
+        bool deployed;
+    }
+
     // Uniswap v3 related variables
     IUniswapV3Pool public immutable pool;
     IERC20 public immutable token0;
     IERC20 public immutable token1;
     int24 public immutable tickSpacing;
 
-    // Holds the latest ticks in which liquidity has been deployed [tickPositionLower, tickPositionUpper]
-    int24 public tickPositionLower;
-    int24 public tickPositionUpper;
+    /*
+     * 0: lower bound -> [lowerBoundLowerTick, lowerBoundUpperTick]
+     * 1: middle bound -> [middleBoundLowerTick, middleBoundUpperTick]
+     * 2: upper bound -> [upperBoundLowerTick, upperBoundUpperTick]
+     */
+    mapping(uint256 => PositionInfo) public positions;
+    uint256 public positionsLength = 3;
 
     // Holds the ´virtual´ total fees accrued over time by this contract over time, it can help with performance tracking
     uint256 public accruedControlledFees0;
@@ -39,6 +49,13 @@ contract TCL is IUniswapV3MintCallback {
     }
 
     event Snapshot(int24 tick, uint256 totalAmount0, uint256 totalAmount1);
+    event ReinstateBound(
+        uint256 boundRange,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 depositedAmount0,
+        uint256 depositedAmount1
+    );
     event FeesEarned(uint256 feesLastPosition0, uint256 feesLastPosition1);
 
     /**
@@ -54,29 +71,117 @@ contract TCL is IUniswapV3MintCallback {
     }
 
     /**
-     * @dev  Move liquidity to another range [_tickPositionLower, _tickPositionUpper]
+     * @dev  Move liquidity to another range [_tickPositionLower, _tickPositionUpper] a specific bound
      * @param _tickPositionLower New lower tick
      * @param _tickPositionUpper New upper tick
+     * @param _targetBound Liquidity bound to be targeted
+     * @param _pullOutAndIn Liquidity will be pull out and in again if ´true´, otherwise uniquely pull out from prev ticks and keep it idle
      **/
     function controlLiquidity(
         int24 _tickPositionLower,
-        int24 _tickPositionUpper
+        int24 _tickPositionUpper,
+        uint256 _targetBound,
+        bool _pullOutAndIn
     ) external onlyManager {
+        _controlLiquidity(
+            _tickPositionLower,
+            _tickPositionUpper,
+            _targetBound,
+            _pullOutAndIn
+        );
+    }
+
+    /// @dev  Move all bounds liquidity simply out of the current ranges or deploy it to another range
+    function controlAllLiquidity(
+        int24[] memory _tickPositionsLower,
+        int24[] memory _tickPositionsUpper,
+        uint256[] memory _targetBounds,
+        bool[] memory _pullsOutAndIn
+    ) external onlyManager {
+        for (uint256 i = 0; i < positionsLength; i++) {
+            _controlLiquidity(
+                _tickPositionsLower[i],
+                _tickPositionsUpper[i],
+                _targetBounds[i],
+                _pullsOutAndIn[i]
+            );
+        }
+    }
+
+    function _controlLiquidity(
+        int24 _tickPositionLower,
+        int24 _tickPositionUpper,
+        uint256 _targetBound,
+        bool _pullOutAndIn
+    ) internal {
+        require(_targetBound <= positionsLength, "positionsLength!");
         _healthyRange(_tickPositionLower, _tickPositionUpper);
 
         (, int24 tick, , , , , ) = pool.slot0();
+        // likely this ´require´ logic will be required to be tweak depending on the bound targeted(TOFIX!!)
         require(_tickPositionLower < tick, "_tickPositionLower!");
         require(_tickPositionUpper > tick, "_tickPositionUpper!");
 
+        PositionInfo memory positionInfo = positions[_targetBound];
+
         (uint128 positionLiquidity, , , , ) = _positionKeyInfo(
-            tickPositionLower,
-            tickPositionUpper
+            positionInfo.tickLower,
+            positionInfo.tickUpper
         );
+
         _burnPositionAndFeeCollection(
-            tickPositionLower,
-            tickPositionUpper,
+            positionInfo.tickLower,
+            positionInfo.tickUpper,
             positionLiquidity
         );
+
+        uint256 balance0 = balanceToken0();
+        uint256 balance1 = balanceToken1();
+
+        if (_pullOutAndIn) {
+            uint128 liquidity = _liquidityForAmounts(
+                _tickPositionLower,
+                _tickPositionUpper,
+                balance0,
+                balance1
+            );
+
+            _mintPosition(_tickPositionLower, _tickPositionUpper, liquidity);
+
+            positions[_targetBound] = PositionInfo({
+                tickLower: _tickPositionLower,
+                tickUpper: _tickPositionUpper,
+                deployed: true
+            });
+
+            emit ReinstateBound(
+                _targetBound,
+                _tickPositionLower,
+                _tickPositionUpper,
+                balance0,
+                balance1
+            );
+        } else {
+            delete positions[_targetBound];
+
+            emit Snapshot(tick, balance0, balance1);
+        }
+    }
+
+    /**
+     * @dev  Reinstate a specific bound of liquidity
+     * @param _tickPositionLower New lower tick
+     * @param _tickPositionUpper New upper tick
+     * @param _targetBound Liquidity bound to be targeted
+     **/
+    function reinstateBound(
+        int24 _tickPositionLower,
+        int24 _tickPositionUpper,
+        uint256 _targetBound
+    ) external onlyManager {
+        _healthyRange(_tickPositionLower, _tickPositionUpper);
+
+        require(positions[_targetBound].deployed != true, "true!");
 
         uint256 balance0 = balanceToken0();
         uint256 balance1 = balanceToken1();
@@ -87,13 +192,22 @@ contract TCL is IUniswapV3MintCallback {
             balance0,
             balance1
         );
-        _mintPosition(_tickPositionLower, _tickPositionUpper, liquidity);
-        (tickPositionLower, tickPositionUpper) = (
-            _tickPositionLower,
-            _tickPositionUpper
-        );
 
-        emit Snapshot(tick, balance0, balance1);
+        _mintPosition(_tickPositionLower, _tickPositionUpper, liquidity);
+
+        positions[_targetBound] = PositionInfo({
+            tickLower: _tickPositionLower,
+            tickUpper: _tickPositionUpper,
+            deployed: true
+        });
+
+        emit ReinstateBound(
+            _targetBound,
+            _tickPositionLower,
+            _tickPositionUpper,
+            balance0,
+            balance1
+        );
     }
 
     /// @dev Checks in given ticks are healthy and (%) operation following tickSpacing from the pool
@@ -153,18 +267,27 @@ contract TCL is IUniswapV3MintCallback {
     function getTreasuryPositionAmounts()
         public
         view
-        returns (uint256 amount0, uint256 amount1)
+        returns (uint256 amountTotal0, uint256 amountTotal1)
     {
-        (uint128 liquidity, , , , ) = _positionKeyInfo(
-            tickPositionLower,
-            tickPositionUpper
-        );
+        for (uint256 i = 0; i < positionsLength; i++) {
+            PositionInfo memory positionInfo = positions[i];
 
-        (amount0, amount1) = _amountsForLiquidity(
-            tickPositionLower,
-            tickPositionUpper,
-            liquidity
-        );
+            if (positionInfo.deployed) {
+                (uint128 liquidity, , , , ) = _positionKeyInfo(
+                    positionInfo.tickLower,
+                    positionInfo.tickUpper
+                );
+
+                (uint256 amount0, uint256 amount1) = _amountsForLiquidity(
+                    positionInfo.tickLower,
+                    positionInfo.tickUpper,
+                    liquidity
+                );
+
+                amountTotal0 = amountTotal0.add(amount0);
+                amountTotal1 = amountTotal1.add(amount1);
+            }
+        }
     }
 
     /// @dev Wrapper around `IUniswapV3Pool.positions()`.
@@ -231,29 +354,41 @@ contract TCL is IUniswapV3MintCallback {
         if (amount0 > 0) token0.safeTransfer(msg.sender, amount0);
         if (amount1 > 0) token1.safeTransfer(msg.sender, amount1);
     }
-    
+
     /// @dev Removes available liquidity from TCL to another destination
-    function transferLiquidity(address _destination) external onlyOwner {
+    function transferLiquidity(address _destination) external onlyManager {
         uint256 balance0 = balanceToken0();
         uint256 balance1 = balanceToken1();
 
         token0.safeTransfer(_destination, balance0);
         token1.safeTransfer(_destination, balance1);
     }
- 
+
     /// @dev Removes all liquidity from pool into contract
     function emergencyLiquidityRemoval(
         int24 tickLower,
         int24 tickUpper,
         uint128 liquidity
     ) external onlyManager {
-        pool.burn(tickLower, tickUpper, liquidity);
-        pool.collect(
-            address(this),
-            tickLower,
-            tickUpper,
-            type(uint128).max,
-            type(uint128).max
-        );
+        for (uint256 i = 0; i < positionsLength; i++) {
+            PositionInfo memory positionInfo = positions[i];
+
+            if (positionInfo.deployed) {
+                pool.burn(
+                    positionInfo.tickLower,
+                    positionInfo.tickUpper,
+                    liquidity
+                );
+                pool.collect(
+                    address(this),
+                    positionInfo.tickLower,
+                    positionInfo.tickUpper,
+                    type(uint128).max,
+                    type(uint128).max
+                );
+
+                delete positions[i];
+            }
+        }
     }
 }
