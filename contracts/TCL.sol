@@ -161,7 +161,7 @@ contract TCL is IUniswapV3MintCallback {
         );
 
         (amount0, amount1) = _amountsForLiquidity(
-            tickPositionUpper,
+            tickPositionLower,
             tickPositionUpper,
             liquidity
         );
