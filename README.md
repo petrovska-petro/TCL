@@ -2,6 +2,14 @@
 
 The scope of the contracts is to manage the liquidity provided by the treasury in Uniswap v3 pool.
 
+## Requirements
+
+`brownie pm clone OpenZeppelin/openzeppelin-contracts@3.4.0`
+
+`brownie pm clone Uniswap/uniswap-v3-core@1.0.0`
+
+`brownie pm clone Uniswap/uniswap-v3-periphery@1.0.0`
+
 ## WIP 
 
 Pendant of adding tests/ and define the pull in/out strategy to be followed by the scripts.
