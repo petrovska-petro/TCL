@@ -93,10 +93,10 @@ contract TCL is IUniswapV3MintCallback {
 
     /// @dev  Move all bounds liquidity simply out of the current ranges or deploy it to another range
     function controlAllLiquidity(
-        int24[] memory _tickPositionsLower,
-        int24[] memory _tickPositionsUpper,
-        uint256[] memory _targetBounds,
-        bool[] memory _pullsOutAndIn
+        int24[3] memory _tickPositionsLower,
+        int24[3] memory _tickPositionsUpper,
+        uint256[3] memory _targetBounds,
+        bool[3] memory _pullsOutAndIn
     ) external onlyManager {
         for (uint256 i = 0; i < positionsLength; i++) {
             _controlLiquidity(
