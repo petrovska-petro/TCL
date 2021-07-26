@@ -177,6 +177,8 @@ contract TCL is IUniswapV3MintCallback {
     function reinstateBound(
         int24 _tickPositionLower,
         int24 _tickPositionUpper,
+        uint256 _amount0,
+        uint256 _amount1,
         uint256 _targetBound
     ) external onlyManager {
         _healthyRange(_tickPositionLower, _tickPositionUpper);
@@ -186,11 +188,14 @@ contract TCL is IUniswapV3MintCallback {
         uint256 balance0 = balanceToken0();
         uint256 balance1 = balanceToken1();
 
+        require(_amount0 <= balance0, "balance0!");
+        require(_amount1 <= balance1, "balance1!");
+
         uint128 liquidity = _liquidityForAmounts(
             _tickPositionLower,
             _tickPositionUpper,
-            balance0,
-            balance1
+            _amount0,
+            _amount1
         );
 
         _mintPosition(_tickPositionLower, _tickPositionUpper, liquidity);
