@@ -127,16 +127,18 @@ contract TCL is IUniswapV3MintCallback {
 
         PositionInfo memory positionInfo = positions[_targetBound];
 
-        (uint128 positionLiquidity, , , , ) = _positionKeyInfo(
-            positionInfo.tickLower,
-            positionInfo.tickUpper
-        );
+        if (positionInfo.deployed) {
+            (uint128 positionLiquidity, , , , ) = _positionKeyInfo(
+                positionInfo.tickLower,
+                positionInfo.tickUpper
+            );
 
-        _burnPositionAndFeeCollection(
-            positionInfo.tickLower,
-            positionInfo.tickUpper,
-            positionLiquidity
-        );
+            _burnPositionAndFeeCollection(
+                positionInfo.tickLower,
+                positionInfo.tickUpper,
+                positionLiquidity
+            );
+        }
 
         uint256 balance0 = balanceToken0();
         uint256 balance1 = balanceToken1();
@@ -157,12 +159,17 @@ contract TCL is IUniswapV3MintCallback {
                 deployed: true
             });
 
+            (
+                uint256 _amountDeployed0,
+                uint256 _amountDeployed1
+            ) = getTreasuryAmountAtBound(_targetBound);
+
             emit ReinstateBound(
                 _targetBound,
                 _tickPositionLower,
                 _tickPositionUpper,
-                balance0,
-                balance1
+                _amountDeployed0,
+                _amountDeployed1
             );
         } else {
             delete positions[_targetBound];
@@ -209,17 +216,24 @@ contract TCL is IUniswapV3MintCallback {
             deployed: true
         });
 
+        (
+            uint256 _amountDeployed0,
+            uint256 _amountDeployed1
+        ) = getTreasuryAmountAtBound(_targetBound);
+
         emit ReinstateBound(
             _targetBound,
             _tickPositionLower,
             _tickPositionUpper,
-            _amount0,
-            _amount1
+            _amountDeployed0,
+            _amountDeployed1
         );
     }
 
     /// @dev Checks in given ticks are healthy and (%) operation following tickSpacing from the pool
     function _healthyRange(int24 tickLower, int24 tickUpper) internal view {
+        require(tickLower >= TickMath.MIN_TICK, "tickLowerlow!");
+        require(tickUpper <= TickMath.MAX_TICK, "tickUpperhigh!");
         require(tickLower < tickUpper, "tickLower>tickUpper");
         require(tickLower % tickSpacing == 0, "tickLower%tickSpacing");
         require(tickUpper % tickSpacing == 0, "tickUpper%tickSpacing");
@@ -233,14 +247,16 @@ contract TCL is IUniswapV3MintCallback {
         uint256 bound
     ) internal view {
         if (bound == 0) {
-            require(tickLower >= tickCurrent / 2, "tickLower<0.5x!");
+            // 0.93 from current tick represents 0.5x
+            require(tickLower >= (tickCurrent / 100) * 93, "tickLower<0.5x!");
             require(tickUpper <= tickCurrent, "tickUpper>1x!");
         } else if (bound == 1) {
             require(tickLower < tickCurrent, "_tickPositionLower!");
             require(tickUpper > tickCurrent, "_tickPositionUpper!");
         } else {
             require(tickLower >= tickCurrent, "tickLower<1x!");
-            require(tickUpper <= tickCurrent * 2, "tickUpper>2x");
+            // 1.06 from current tick represents 2x
+            require(tickUpper <= (tickCurrent / 100) * 106, "tickUpper>2x");
         }
     }
 
@@ -314,6 +330,32 @@ contract TCL is IUniswapV3MintCallback {
                 amountTotal0 = amountTotal0.add(amount0);
                 amountTotal1 = amountTotal1.add(amount1);
             }
+        }
+    }
+
+    /// @dev Token0 and Token1 amounts held by TCL at specific bound
+    function getTreasuryAmountAtBound(uint256 _targetBound)
+        public
+        view
+        returns (uint256 amountTotal0, uint256 amountTotal1)
+    {
+        require(_targetBound < positionsLength, "positionsLength!");
+        PositionInfo memory positionInfo = positions[_targetBound];
+
+        if (positionInfo.deployed) {
+            (uint128 liquidity, , , , ) = _positionKeyInfo(
+                positionInfo.tickLower,
+                positionInfo.tickUpper
+            );
+
+            (uint256 amount0, uint256 amount1) = _amountsForLiquidity(
+                positionInfo.tickLower,
+                positionInfo.tickUpper,
+                liquidity
+            );
+
+            amountTotal0 = amount0;
+            amountTotal1 = amount1;
         }
     }
 

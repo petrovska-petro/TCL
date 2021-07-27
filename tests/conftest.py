@@ -53,10 +53,10 @@ def pool(TestToken, pm, manager, users):
     pool.initialize(price, {"from": manager})
 
     for user in users:
-        # mint 39k tBADGER and approve pool
+        # mint 414k tBADGER and approve pool
         token0.mint(user, 414394e18, {"from": manager})
         token0.approve(pool, 414394e18, {"from": user})
-        # mint 10 tWBTC and approve pool
+        # mint 100 tWBTC and approve pool
         token1.mint(user, 100e8, {"from": manager})
         token1.approve(pool, 100e8, {"from": user})
 
@@ -73,8 +73,8 @@ def tcl(TCL, pool, pool_tokens, manager, treasury):
     tcl = manager.deploy(TCL, pool)
 
     # approve treasury address to tx tokens
-    pool_tokens[0].approve(tcl, 39000e18, {"from": treasury})
-    pool_tokens[1].approve(tcl, 10e8, {"from": treasury})
+    pool_tokens[0].approve(tcl, 414394e18, {"from": treasury})
+    pool_tokens[1].approve(tcl, 100e8, {"from": treasury})
 
     yield tcl
 

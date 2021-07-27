@@ -24,12 +24,14 @@ def test_treasury_depositing(tcl, pool_tokens, manager, treasury, amount0Deploy,
     tx = tcl.reinstateBound(tickLower, tickUpper, amount0Deploy,
                             amount1Deploy, boundRange, {"from": manager})
 
+    amountTotal0, amountTotal1 = tcl.getTreasuryAmountAtBound(boundRange)
+
     assert tx.events["ReinstateBound"] == {
         "boundRange": boundRange,
         "tickLower": tickLower,
         "tickUpper": tickUpper,
-        "depositedAmount0": amount0Deploy,
-        "depositedAmount1": amount1Deploy
+        "depositedAmount0": amountTotal0,
+        "depositedAmount1": amountTotal1
     }
 
 
@@ -63,57 +65,55 @@ def test_controlLiquidity(tcl, pool, pool_tokens, tcl_positions_info, manager, a
     pool_tokens[0].transfer(tcl, amount0Deploy)
     pool_tokens[1].transfer(tcl, amount1Deploy)
 
-    print('balance0:', pool_tokens[0].balanceOf(tcl))
-    print('balance1:', pool_tokens[1].balanceOf(tcl))
-
     current_tick = pool.slot0()[1]
 
     tickSpacing = tcl.tickSpacing()
-    tickLower = (current_tick - 2 * tickSpacing) // tickSpacing * tickSpacing
-    tickUpper = (current_tick + 2 * tickSpacing) // tickSpacing * tickSpacing
+    tickLower = (current_tick - 20 * tickSpacing) // tickSpacing * tickSpacing
+    tickUpper = (current_tick + 20 * tickSpacing) // tickSpacing * tickSpacing
     # middle bound
     boundRange = 1
 
     tcl.reinstateBound(tickLower, tickUpper, amount0Deploy,
                        amount1Deploy, boundRange, {"from": manager})
-    
-    tcl_positions_info(tcl)
+
+    print('reinstateBound(): ',  tcl.getTreasuryAmountAtBound(boundRange))
+
+    tickLowerPullOut = (current_tick - 50 *
+                        tickSpacing) // tickSpacing * tickSpacing
+    tickUpperPullOut = (current_tick + 50 *
+                        tickSpacing) // tickSpacing * tickSpacing
 
     tx_pullout = tcl.controlLiquidity(
-        tickLower, tickUpper, boundRange, pullOutAndIn, {"from": manager})
+        tickLowerPullOut, tickUpperPullOut, boundRange, pullOutAndIn, {"from": manager})
 
     mb = tcl.positions(boundRange)
 
+    amountTotal0, amountTotal1 = tcl.getTreasuryAmountAtBound(boundRange)
+
     if pullOutAndIn:
         # Check proper records are stored in mapping
-        assert mb[0] == tickLower
-        assert mb[1] == tickUpper
+        assert mb[0] == tickLowerPullOut
+        assert mb[1] == tickUpperPullOut
         assert mb[2] == True
 
-        tcl_positions_info(tcl)
-        """
+        print(amountTotal0, amountTotal1)
+
         assert tx_pullout.events["ReinstateBound"] == {
             "boundRange": boundRange,
-            "tickLower": tickLower,
-            "tickUpper": tickUpper,
-            "depositedAmount0": amount0Deploy,
-            "depositedAmount1": amount1Deploy
+            "tickLower": tickLowerPullOut,
+            "tickUpper": tickUpperPullOut,
+            "depositedAmount0": amountTotal0,
+            "depositedAmount1": amountTotal1
         }
-        """
     else:
         # Check if struct has been ´delete´ properly
         assert mb[0] == 0
         assert mb[1] == 0
         assert mb[2] == False
 
-        tcl_positions_info(tcl)
-        """
-        assert tx_pullout.events["Snapshot"] == {
-            "tick": boundRange,
-            "totalAmount0": amount0Deploy,
-            "totalAmount1": amount1Deploy
-        }
-        """
+        print(amountTotal0, amountTotal1)
+
+        assert tx_pullout.events["Snapshot"]["tick"] == current_tick
 
 
 def test_controlLiquidity_checks(tcl, pool, manager):
@@ -131,3 +131,9 @@ def test_controlLiquidity_checks(tcl, pool, manager):
     with reverts("_tickPositionUpper!"):
         tcl.controlLiquidity(
             tickLower, (current_tick - tickSpacing) // tickSpacing * tickSpacing, 1, False, {"from": manager})
+    with reverts("tickLower<0.5x!"):
+        tcl.controlLiquidity(
+            (current_tick / 2) // tickSpacing * tickSpacing, current_tick // tickSpacing * tickSpacing, 0, False, {"from": manager})
+    with reverts("tickUpper>2x"):
+        tcl.controlLiquidity(
+            current_tick * 1.02 // tickSpacing * tickSpacing, (current_tick * 2) // tickSpacing * tickSpacing, 2, False, {"from": manager})
