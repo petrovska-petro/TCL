@@ -118,9 +118,12 @@ contract TCL is IUniswapV3MintCallback {
         _healthyRange(_tickPositionLower, _tickPositionUpper);
 
         (, int24 tick, , , , , ) = pool.slot0();
-        // likely this ´require´ logic will be required to be tweak depending on the bound targeted(TOFIX!!)
-        require(_tickPositionLower < tick, "_tickPositionLower!");
-        require(_tickPositionUpper > tick, "_tickPositionUpper!");
+        _checkTicksRangesOnBound(
+            _tickPositionLower,
+            _tickPositionUpper,
+            tick,
+            _targetBound
+        );
 
         PositionInfo memory positionInfo = positions[_targetBound];
 
@@ -210,8 +213,8 @@ contract TCL is IUniswapV3MintCallback {
             _targetBound,
             _tickPositionLower,
             _tickPositionUpper,
-            balance0,
-            balance1
+            _amount0,
+            _amount1
         );
     }
 
@@ -220,6 +223,25 @@ contract TCL is IUniswapV3MintCallback {
         require(tickLower < tickUpper, "tickLower>tickUpper");
         require(tickLower % tickSpacing == 0, "tickLower%tickSpacing");
         require(tickUpper % tickSpacing == 0, "tickUpper%tickSpacing");
+    }
+
+    /// @dev Checks in given ticks are within the appropiate range for the given bound (0=lower, 1=middle, 2=upper) -> [0.5x, 2x]
+    function _checkTicksRangesOnBound(
+        int24 tickLower,
+        int24 tickUpper,
+        int24 tickCurrent,
+        uint256 bound
+    ) internal view {
+        if (bound == 0) {
+            require(tickLower >= tickCurrent / 2, "tickLower<0.5x!");
+            require(tickUpper <= tickCurrent, "tickUpper>1x!");
+        } else if (bound == 1) {
+            require(tickLower < tickCurrent, "_tickPositionLower!");
+            require(tickUpper > tickCurrent, "_tickPositionUpper!");
+        } else {
+            require(tickLower >= tickCurrent, "tickLower<1x!");
+            require(tickUpper <= tickCurrent * 2, "tickUpper>2x");
+        }
     }
 
     /// @dev Deposits liquidity in a range on the Uniswap pool.

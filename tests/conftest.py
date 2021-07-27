@@ -53,10 +53,12 @@ def pool(TestToken, pm, manager, users):
     pool.initialize(price, {"from": manager})
 
     for user in users:
-        # mint 39k tBADGER
+        # mint 39k tBADGER and approve pool
         token0.mint(user, 39000e18, {"from": manager})
-        # mint 10 tWBTC
+        token0.approve(pool, 100e18, {"from": user})
+        # mint 10 tWBTC and approve pool
         token1.mint(user, 10e8, {"from": manager})
+        token1.approve(pool, 10e8, {"from": user})
 
     yield pool
 
@@ -67,36 +69,38 @@ def pool_tokens(TestToken, pool):
 
 
 @pytest.fixture
-def tcl(TCL, pool, tokens, manager, treasury):
+def tcl(TCL, pool, pool_tokens, manager, treasury):
     tcl = manager.deploy(TCL, pool)
 
     # approve treasury address to tx tokens
-    tokens[0].approve(tcl, 39000e18, {"from": treasury})
-    tokens[1].approve(tcl, 10e8, {"from": treasury})
+    pool_tokens[0].approve(tcl, 39000e18, {"from": treasury})
+    pool_tokens[1].approve(tcl, 10e8, {"from": treasury})
 
     yield tcl
 
 
 @pytest.fixture
-def tcl_positions_info(pool, tokens):
+def tcl_positions_info(pool, pool_tokens):
     def method(tcl):
         # lower bound
-        lb = tcl.positions[0]
+        lb = tcl.positions(0)
         # middle bound
-        mb = tcl.positions[1]
+        mb = tcl.positions(1)
         # upper bound
-        ub = tcl.positions[2]
+        ub = tcl.positions(2)
         # keys
-        lower_bound_key = computePositionKey(tcl, lb.tickLower, lb.tickUpper)
-        middle_bound_key = computePositionKey(tcl, mb.tickLower, mb.tickUpper)
-        upper_bound_key = computePositionKey(tcl, ub.tickLower, ub.tickUpper)
+        lower_bound_key = computePositionKey(tcl, lb[0], lb[1])
+        middle_bound_key = computePositionKey(tcl, mb[0], mb[1])
+        upper_bound_key = computePositionKey(tcl, ub[0], ub[1])
         # --- consoles ---
+        print("------------------------------------")
         print(f"Lower bound position: {pool.positions(lower_bound_key)}")
         print(f"Middle bound position: {pool.positions(middle_bound_key)}")
         print(f"Upper bound position: {pool.positions(upper_bound_key)}")
         # check idle tokens in TCL
-        print(f"Idle balance 0:  {tokens[0].balanceOf(tcl)}")
-        print(f"Idle balance 1:  {tokens[1].balanceOf(tcl)}")
+        print(f"Idle balance 0:  {pool_tokens[0].balanceOf(tcl)}")
+        print(f"Idle balance 1:  {pool_tokens[1].balanceOf(tcl)}")
+        print("------------------------------------")
     yield method
 
 
