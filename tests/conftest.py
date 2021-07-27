@@ -54,11 +54,11 @@ def pool(TestToken, pm, manager, users):
 
     for user in users:
         # mint 39k tBADGER and approve pool
-        token0.mint(user, 39000e18, {"from": manager})
-        token0.approve(pool, 100e18, {"from": user})
+        token0.mint(user, 414394e18, {"from": manager})
+        token0.approve(pool, 414394e18, {"from": user})
         # mint 10 tWBTC and approve pool
-        token1.mint(user, 10e8, {"from": manager})
-        token1.approve(pool, 10e8, {"from": user})
+        token1.mint(user, 100e8, {"from": manager})
+        token1.approve(pool, 100e8, {"from": user})
 
     yield pool
 

@@ -4,7 +4,7 @@ import pytest
 
 @pytest.mark.parametrize(
     "amount0Deploy,amount1Deploy",
-    [[19500e18, 5e8], [39000e18, 10e8]],
+    [[207197e18, 50e8], [414394e18, 100e8]],
 )
 def test_treasury_depositing(tcl, pool_tokens, manager, treasury, amount0Deploy, amount1Deploy):
     tickSpacing = tcl.tickSpacing()
@@ -56,7 +56,7 @@ def test_reinstate_checks(tcl, pool_tokens, manager):
 
 @pytest.mark.parametrize(
     "amount0Deploy,amount1Deploy,pullOutAndIn",
-    [[19500e18, 5e8, False], [39000e18, 10e8, True]],
+    [[207197e18, 50e8, False], [414394e18, 100e8, True]],
 )
 def test_controlLiquidity(tcl, pool, pool_tokens, tcl_positions_info, manager, amount0Deploy, amount1Deploy, pullOutAndIn):
     # Transfer from treasury to TCL
