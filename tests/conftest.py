@@ -114,3 +114,7 @@ def computePositionKey(owner, tickLower, tickUpper):
     return Web3.solidityKeccak(
         ["address", "int24", "int24"], [str(owner), tickLower, tickUpper]
     )
+
+def tickToPrice(pool):
+    sqrtPrice = pool.slot0()[0] / (1 << 96)
+    return sqrtPrice ** 2

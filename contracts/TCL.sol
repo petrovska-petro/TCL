@@ -417,19 +417,20 @@ contract TCL is IUniswapV3MintCallback {
     }
 
     /// @dev Removes all liquidity from pool into contract
-    function emergencyLiquidityRemoval(
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 liquidity
-    ) external onlyManager {
+    function emergencyLiquidityRemoval() external onlyManager {
         for (uint256 i = 0; i < positionsLength; i++) {
             PositionInfo memory positionInfo = positions[i];
 
             if (positionInfo.deployed) {
+                (uint128 positionLiquidity, , , , ) = _positionKeyInfo(
+                    positionInfo.tickLower,
+                    positionInfo.tickUpper
+                );
+
                 pool.burn(
                     positionInfo.tickLower,
                     positionInfo.tickUpper,
-                    liquidity
+                    positionLiquidity
                 );
                 pool.collect(
                     address(this),
