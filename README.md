@@ -31,7 +31,7 @@ Low volatility: `[daily['lower_bollinger'] * 0.985, daily['upper_bollinger'] * 1
 
 ## Documentation
 
-You can read further details of the mechanism of TCL contract on [notion_notes](https://www.notion.so/).
+You can read further details of the mechanism of TCL contract on [notion_notes](https://harmonious-metal-b66.notion.site/Treasury-Controlled-Liquidity-Doc-cf91edfe2eac42e79836e255e7272c14).
 
 ## Credits
 
