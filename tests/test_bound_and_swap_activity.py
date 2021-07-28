@@ -1,7 +1,7 @@
 import pytest
 import random
 
-from conftest import tickToPrice
+from conftest import tickToPrice, feeInsideToTokenOwned
 
 
 @pytest.mark.parametrize("swapDirection", [False, True])
@@ -75,14 +75,18 @@ def test_tcl_swaps_day(tcl, pool, swapper, pool_tokens, tcl_positions_info, mana
             swapAmt = random.randint(300e18, 500e18)
         swapper.swap(pool, swapDirection, swapAmt, {"from": lp_user})
 
-    if swapDirection:
-        assert tickToPrice(pool) < price
-    else:
-        assert tickToPrice(pool) > price
-    
     # Update uncollected fees for inspection values in ´tcl_positions_info´ printouts
     tcl._uncollectedFeesUpdate(boundRange)
+    _, middle_info, _ = tcl_positions_info(tcl)
 
-    print(tcl_positions_info(tcl))
+    if swapDirection:
+        assert tickToPrice(pool) < price
+        print(
+            f"Token0 fee owned: {feeInsideToTokenOwned(middle_info[1], middle_info[0])}")
+    else:
+        assert tickToPrice(pool) > price
+        print(
+            f"Token1 fee owned: {feeInsideToTokenOwned(middle_info[2], middle_info[0])}")
+
     print('After 15 swaps price: ', tickToPrice(pool))
     print('After 15 swaps activity: ', tcl.getTreasuryAmountAtBound(boundRange))

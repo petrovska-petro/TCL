@@ -99,14 +99,18 @@ def tcl_positions_info(pool, pool_tokens):
         middle_bound_key = computePositionKey(tcl, mb[0], mb[1])
         upper_bound_key = computePositionKey(tcl, ub[0], ub[1])
         # --- consoles ---
+        lower_info = pool.positions(lower_bound_key)
+        middle_info = pool.positions(middle_bound_key)
+        upper_info = pool.positions(upper_bound_key)
         print("------------------------------------")
-        print(f"Lower bound position: {pool.positions(lower_bound_key)}")
-        print(f"Middle bound position: {pool.positions(middle_bound_key)}")
-        print(f"Upper bound position: {pool.positions(upper_bound_key)}")
+        print(f"Lower bound position: {lower_info}")
+        print(f"Middle bound position: {middle_info}")
+        print(f"Upper bound position: {upper_info}")
         # check idle tokens in TCL
         print(f"Idle balance 0:  {pool_tokens[0].balanceOf(tcl)}")
         print(f"Idle balance 1:  {pool_tokens[1].balanceOf(tcl)}")
         print("------------------------------------")
+        return [lower_info, middle_info, upper_info]
     yield method
 
 
@@ -115,6 +119,11 @@ def computePositionKey(owner, tickLower, tickUpper):
         ["address", "int24", "int24"], [str(owner), tickLower, tickUpper]
     )
 
+
 def tickToPrice(pool):
     sqrtPrice = pool.slot0()[0] / (1 << 96)
     return sqrtPrice ** 2
+
+
+def feeInsideToTokenOwned(fee, liquidity):
+    return (fee * liquidity) / 2**128
