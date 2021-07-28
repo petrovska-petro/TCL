@@ -243,6 +243,20 @@ contract TCL is IUniswapV3MintCallback {
         }
     }
 
+    /// @dev Update uncollected fees info since last mint/burn, useful for tracking feeGrowthInsideLast data off-chain
+    function _uncollectedFeesUpdate(uint256 _targetBound) external {
+        PositionInfo memory positionInfo = positions[_targetBound];
+
+        (uint128 liquidity, , , , ) = _positionKeyInfo(
+            positionInfo.tickLower,
+            positionInfo.tickUpper
+        );
+
+        if (liquidity > 0) {
+            pool.burn(positionInfo.tickLower, positionInfo.tickUpper, 0);
+        }
+    }
+
     /// @dev Deposits liquidity in a range on the Uniswap pool.
     function _mintPosition(
         int24 tickLower,

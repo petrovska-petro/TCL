@@ -79,6 +79,9 @@ def test_tcl_swaps_day(tcl, pool, swapper, pool_tokens, tcl_positions_info, mana
         assert tickToPrice(pool) < price
     else:
         assert tickToPrice(pool) > price
+    
+    # Update uncollected fees for inspection values in ´tcl_positions_info´ printouts
+    tcl._uncollectedFeesUpdate(boundRange)
 
     print(tcl_positions_info(tcl))
     print('After 15 swaps price: ', tickToPrice(pool))
