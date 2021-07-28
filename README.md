@@ -29,9 +29,9 @@ High volatility: `[daily['lower_bollinger'] * 0.97, daily['upper_bollinger'] * 1
 
 Low volatility: `[daily['lower_bollinger'] * 0.985, daily['upper_bollinger'] * 1.015]`
 
-## WIP 
+## Documentation
 
-Pendant of adding tests/ and define the pull in/out strategy to be followed by the scripts.
+You can read further details of the mechanism of TCL contract on [notion_notes](https://www.notion.so/).
 
 ## Credits
 
