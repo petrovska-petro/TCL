@@ -1,17 +1,17 @@
-from brownie import chain, reverts
+from brownie import reverts
 import pytest
 
 
 @pytest.mark.parametrize(
     "amount0Deploy,amount1Deploy",
-    [[207197e18, 50e8], [414394e18, 100e8]],
+    [[50e18, 1500000e18], [100e18, 3000000e18]],
 )
 def test_treasury_depositing(tcl, pool_tokens, manager, treasury, amount0Deploy, amount1Deploy):
     tickSpacing = tcl.tickSpacing()
 
     # Transfer from treasury to TCL
-    pool_tokens[0].transfer(tcl, amount0Deploy)
-    pool_tokens[1].transfer(tcl, amount1Deploy)
+    pool_tokens[0].transfer(tcl, amount0Deploy, {"from": treasury})
+    pool_tokens[1].transfer(tcl, amount1Deploy, {"from": treasury})
 
     assert pool_tokens[0].balanceOf(tcl) == amount0Deploy
     assert pool_tokens[1].balanceOf(tcl) == amount1Deploy
@@ -37,7 +37,7 @@ def test_treasury_depositing(tcl, pool_tokens, manager, treasury, amount0Deploy,
 
 def test_reinstate_checks(tcl, pool_tokens, manager):
     tickSpacing = tcl.tickSpacing()
-    pool_tokens[0].transfer(tcl, 19500e18)
+    pool_tokens[0].transfer(tcl, 19e18)
 
     with reverts("tickLower>tickUpper"):
         tcl.reinstateBound(10 * tickSpacing, 2 * tickSpacing, 0,
@@ -52,18 +52,18 @@ def test_reinstate_checks(tcl, pool_tokens, manager):
         tcl.reinstateBound(10 * tickSpacing, 20 * tickSpacing, 59000e18,
                            0, 1, {"from": manager})
     with reverts("balance1!"):
-        tcl.reinstateBound(10 * tickSpacing, 20 * tickSpacing, 19500e18,
+        tcl.reinstateBound(10 * tickSpacing, 20 * tickSpacing, 19e18,
                            13e8, 1, {"from": manager})
 
 
 @pytest.mark.parametrize(
     "amount0Deploy,amount1Deploy,pullOutAndIn",
-    [[207197e18, 50e8, False], [414394e18, 100e8, True]],
+    [[50e18, 1500000e18, False], [100e18, 3000000e18, True]],
 )
-def test_controlLiquidity(tcl, pool, pool_tokens, tcl_positions_info, manager, amount0Deploy, amount1Deploy, pullOutAndIn):
+def test_controlLiquidity(tcl, pool, pool_tokens, tcl_positions_info, manager, treasury, amount0Deploy, amount1Deploy, pullOutAndIn):
     # Transfer from treasury to TCL
-    pool_tokens[0].transfer(tcl, amount0Deploy)
-    pool_tokens[1].transfer(tcl, amount1Deploy)
+    pool_tokens[0].transfer(tcl, amount0Deploy, {"from": treasury})
+    pool_tokens[1].transfer(tcl, amount1Deploy, {"from": treasury})
 
     current_tick = pool.slot0()[1]
 
@@ -95,7 +95,9 @@ def test_controlLiquidity(tcl, pool, pool_tokens, tcl_positions_info, manager, a
         assert mb[0] == tickLowerPullOut
         assert mb[1] == tickUpperPullOut
         assert mb[2] == True
-
+        
+        assert amountTotal0 > 0 and amountTotal1 > 0
+        
         print(amountTotal0, amountTotal1)
 
         assert tx_pullout.events["ReinstateBound"] == {
@@ -110,6 +112,8 @@ def test_controlLiquidity(tcl, pool, pool_tokens, tcl_positions_info, manager, a
         assert mb[0] == 0
         assert mb[1] == 0
         assert mb[2] == False
+        
+        assert amountTotal0 == amountTotal1 == 0
 
         print(amountTotal0, amountTotal1)
 
