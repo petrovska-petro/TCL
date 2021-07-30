@@ -1,29 +1,15 @@
 import pytest
 import random
 
-from conftest import tickToPrice, feeInsideToTokenOwned
+from conftest import tickToPrice, feeInsideToTokenOwned, init_tcl
 
 
 @pytest.mark.parametrize("swapDirection", [False, True])
 @pytest.mark.parametrize("whale", [False, True])
-def test_tcl_swaps(tcl, pool, swapper, pool_tokens, manager, treasury, lp_user, swapDirection, whale):
-
-    token0Amt = 50e18
-    token1Amt = 1500000e18
-    # Transfer from treasury to TCL
-    pool_tokens[0].transfer(tcl, token0Amt, {"from": treasury})
-    pool_tokens[1].transfer(tcl, token1Amt, {"from": treasury})
-
-    # Deploy in middle bound
+def test_tcl_swaps(tcl, pool, swapper, pool_tokens, users, lp_user, swapDirection, whale):
+    init_tcl(tcl, pool, pool_tokens, users)
     current_tick = pool.slot0()[1]
-    print(current_tick)
-    tickSpacing = tcl.tickSpacing()
-    tickLower = (current_tick - 10 * tickSpacing) // tickSpacing * tickSpacing
-    tickUpper = (current_tick + 10 * tickSpacing) // tickSpacing * tickSpacing
     boundRange = 1
-
-    tcl.reinstateBound(tickLower, tickUpper, token0Amt,
-                       token1Amt, boundRange, {"from": manager})
 
     print('Pre-swap: ', tcl.getTreasuryAmountAtBound(boundRange))
 
@@ -44,23 +30,21 @@ def test_tcl_swaps(tcl, pool, swapper, pool_tokens, manager, treasury, lp_user, 
 
 
 @pytest.mark.parametrize("swapDirection", [False, True])
-def test_tcl_swaps_day(tcl, pool, swapper, pool_tokens, tcl_positions_info, manager, treasury, lp_user, swapDirection):
+def test_tcl_swaps_day(tcl, pool, swapper, pool_tokens, tcl_positions_info, manager, users, lp_user, swapDirection):
+    token0Amt = pool_tokens[0].balanceOf(users[3])
+    token1Amt = pool_tokens[1].balanceOf(users[3])
 
-    # Provide max liq aprox ~ 3M of tWBTC & 3M of tBADGER
-    token0Amt = 100e18
-    token1Amt = 3000000e18
-    # Transfer from treasury to TCL
-    pool_tokens[0].transfer(tcl, token0Amt, {"from": treasury})
-    pool_tokens[1].transfer(tcl, token1Amt, {"from": treasury})
-
-    # Deploy in middle bound
-    current_tick = pool.slot0()[1]
+    init_tcl(tcl, pool, pool_tokens, users)
     price = tickToPrice(pool)
+    current_tick = pool.slot0()[1]
+
     print('Pre-swap price and tick: ', tickToPrice(pool), current_tick)
+
     print(tickToPrice(pool))
     tickSpacing = tcl.tickSpacing()
-    tickLower = (current_tick - 10 * tickSpacing) // tickSpacing * tickSpacing
-    tickUpper = (current_tick + 10 * tickSpacing) // tickSpacing * tickSpacing
+    range_width = 4000
+    tickLower = (current_tick - range_width) // tickSpacing * tickSpacing
+    tickUpper = (current_tick + range_width) // tickSpacing * tickSpacing
     boundRange = 1
 
     tcl.reinstateBound(tickLower, tickUpper, token0Amt,

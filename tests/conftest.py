@@ -54,17 +54,17 @@ def pool(TestToken, swapper, pm, manager, users):
     token0 = TestToken.at(pool.token0())
     token1 = TestToken.at(pool.token1())
 
-    # initialize price to 30k
-    price = int(sqrt(30000) * (1 << 96))
+    # initialize price as sqrt(amountToken1/amountToken0) Q64.96 value
+    price = int(sqrt(285714/100) * (1 << 96))
     pool.initialize(price, {"from": manager})
 
     for user in users:
-        # mint 100 tWBTC and approve pool
+        # mint 100 tWBTC and approve pool - 100e18
         token0.mint(user, 100e18, {"from": manager})
         token0.approve(swapper, 100e18, {"from": user})
-        # mint 3000000 tBADGER and approve pool
-        token1.mint(user, 3000000e18, {"from": manager})
-        token1.approve(swapper, 3000000e18, {"from": user})
+        # mint 285714 tBADGER and approve pool
+        token1.mint(user, 285714e18, {"from": manager})
+        token1.approve(swapper, 285714e18, {"from": user})
 
     yield pool
 
@@ -76,11 +76,11 @@ def pool_tokens(TestToken, pool):
 
 @pytest.fixture
 def tcl(TCL, pool, pool_tokens, manager, treasury):
-    tcl = manager.deploy(TCL, pool)
+    tcl = manager.deploy(TCL, pool, treasury)
 
     # approve treasury address to tx tokens
     pool_tokens[0].approve(tcl, 100e18, {"from": treasury})
-    pool_tokens[1].approve(tcl, 3000000e18, {"from": treasury})
+    pool_tokens[1].approve(tcl, 285714e18, {"from": treasury})
 
     yield tcl
 
@@ -107,8 +107,8 @@ def tcl_positions_info(pool, pool_tokens):
         print(f"Middle bound position: {middle_info}")
         print(f"Upper bound position: {upper_info}")
         # check idle tokens in TCL
-        print(f"Idle balance 0:  {pool_tokens[0].balanceOf(tcl)}")
-        print(f"Idle balance 1:  {pool_tokens[1].balanceOf(tcl)}")
+        print(f"Idle balance 0:  {pool_tokens[0].balanceOf(tcl).to('ether')}")
+        print(f"Idle balance 1:  {pool_tokens[1].balanceOf(tcl).to('ether')}")
         print("------------------------------------")
         return [lower_info, middle_info, upper_info]
     yield method
@@ -127,3 +127,23 @@ def tickToPrice(pool):
 
 def feeInsideToTokenOwned(fee, liquidity):
     return (fee * liquidity) / 2**128
+
+
+def init_tcl(tcl, pool, pool_tokens, users):
+    # Transfer from treasury to TCL
+    amount0 = pool_tokens[0].balanceOf(users[3])
+    amount1 = pool_tokens[1].balanceOf(users[3])
+    pool_tokens[0].transfer(tcl, amount0, {"from": users[3]})
+    pool_tokens[1].transfer(tcl, amount1, {"from": users[3]})
+
+    current_tick = pool.slot0()[1]
+
+    tickSpacing = tcl.tickSpacing()
+    range_width = 4500
+    tickLower = (current_tick - range_width) // tickSpacing * tickSpacing
+    tickUpper = (current_tick + range_width) // tickSpacing * tickSpacing
+    # middle bound
+    boundRange = 1
+
+    tcl.reinstateBound(tickLower, tickUpper, amount0,
+                       amount1, boundRange, {"from": users[0]})

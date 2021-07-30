@@ -33,7 +33,22 @@ Low volatility: `[daily['lower_bollinger'] * 0.985, daily['upper_bollinger'] * 1
 
 You can read further details of the mechanism of TCL contract on [notion_notes](https://harmonious-metal-b66.notion.site/Treasury-Controlled-Liquidity-Doc-cf91edfe2eac42e79836e255e7272c14).
 
+## Simulation - IL printouts
+
+It will simulate four scenarios:
+
+* Passive bound - low vol ~ 220k USD volume/day (15d) 
+* Passive bound - high vol ~ 2M usd volumen/day (6d)
+
+Calculation expressed in token1 denomination: IL = LP<sub>final</sub> - LP<sub>initial</sub> + uncollectedFee<sub>token0</sub> + uncollectedFee<sub>token1</sub>
+
+Note: IL does not account for idle capital if existent.
+
+Run the tests: 
+
+`brownie test tests/test_market_simulation.py -s`
+
 ## Credits
 
 Charm finance protocol repository has been really valuable while reading their contracts and tests to have a better picture
-on how to manage liquidity in Uniswap v3, since they are one of the few protocol making profit in this game.
+on how to manage liquidity in Uniswap v3, since they are one of the few protocol making profit in this game. 

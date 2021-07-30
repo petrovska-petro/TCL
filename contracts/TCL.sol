@@ -42,6 +42,7 @@ contract TCL is IUniswapV3MintCallback {
 
     // Address with rights to control the liquidity
     address public manager;
+    address public treasury;
 
     modifier onlyManager() {
         require(msg.sender == manager, "manager!");
@@ -60,14 +61,16 @@ contract TCL is IUniswapV3MintCallback {
 
     /**
      * @param _pool Uniswap V3 pool
+     * @param _treasury Treasury address/pool redemption
      **/
-    constructor(address _pool) {
+    constructor(address _pool, address _treasury) {
         pool = IUniswapV3Pool(_pool);
         token0 = IERC20(IUniswapV3Pool(_pool).token0());
         token1 = IERC20(IUniswapV3Pool(_pool).token1());
         tickSpacing = IUniswapV3Pool(_pool).tickSpacing();
 
         manager = msg.sender;
+        treasury = _treasury;
     }
 
     /**
@@ -174,7 +177,16 @@ contract TCL is IUniswapV3MintCallback {
         uint256 _amount1,
         uint256 _targetBound
     ) external onlyManager {
+        require(_targetBound < positionsLength, "positionsLength!");
         _healthyRange(_tickPositionLower, _tickPositionUpper);
+
+        (, int24 tick, , , , , ) = pool.slot0();
+        _checkTicksRangesOnBound(
+            _tickPositionLower,
+            _tickPositionUpper,
+            tick,
+            _targetBound
+        );
 
         require(positions[_targetBound].deployed != true, "true!");
 
@@ -286,6 +298,9 @@ contract TCL is IUniswapV3MintCallback {
 
         uint256 feesLastPosition0 = amount0.sub(burned0);
         uint256 feesLastPosition1 = amount1.sub(burned1);
+
+        token0.safeTransfer(treasury, feesLastPosition0);
+        token1.safeTransfer(treasury, feesLastPosition1);
 
         accruedControlledFees0 = accruedControlledFees0.add(feesLastPosition0);
         accruedControlledFees1 = accruedControlledFees1.add(feesLastPosition1);
@@ -457,5 +472,13 @@ contract TCL is IUniswapV3MintCallback {
                 delete positions[i];
             }
         }
+    }
+
+    /**
+     * @notice Used to set the new treasury/pool redemption address where earned fees
+     * will be sent after collect()
+     */
+    function setTreasuryAddress(address _treasury) external onlyManager {
+        treasury = _treasury;
     }
 }
