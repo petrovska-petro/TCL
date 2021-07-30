@@ -481,4 +481,12 @@ contract TCL is IUniswapV3MintCallback {
     function setTreasuryAddress(address _treasury) external onlyManager {
         treasury = _treasury;
     }
+
+    /**
+     * @notice Used to set the new lenght of the positions, since over time could
+     * increase/decrease compare to default
+     */
+    function setPositionLength(uint256 _positionsLength) external onlyManager {
+        positionsLength = _positionsLength;
+    }
 }
