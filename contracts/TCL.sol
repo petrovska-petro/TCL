@@ -360,14 +360,11 @@ contract TCL is IUniswapV3MintCallback {
                 positionInfo.tickUpper
             );
 
-            (uint256 amount0, uint256 amount1) = _amountsForLiquidity(
+            (amountTotal0, amountTotal1) = _amountsForLiquidity(
                 positionInfo.tickLower,
                 positionInfo.tickUpper,
                 liquidity
             );
-
-            amountTotal0 = amount0;
-            amountTotal1 = amount1;
         }
     }
 
