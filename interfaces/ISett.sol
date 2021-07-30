@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 interface ISett {
-    function deposit(uint256 _amount) public;
+    function deposit(uint256 _amount) external;
 
-    function withdraw(uint256 _shares) public;
+    function withdraw(uint256 _shares) external;
 }

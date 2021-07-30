@@ -69,7 +69,7 @@ def test_reinstate_checks(tcl, pool_tokens, pool,  manager):
     "amount0Deploy,amount1Deploy,pullOutAndIn",
     [[50e18, 142857e18, False], [100e18, 285714e18, True]],
 )
-def test_controlLiquidity(tcl, pool, pool_tokens, tcl_positions_info, manager, treasury, amount0Deploy, amount1Deploy, pullOutAndIn):
+def test_controlLiquidity(tcl, pool, pool_tokens, manager, treasury, amount0Deploy, amount1Deploy, pullOutAndIn):
     # Transfer from treasury to TCL
     pool_tokens[0].transfer(tcl, amount0Deploy, {"from": treasury})
     pool_tokens[1].transfer(tcl, amount1Deploy, {"from": treasury})

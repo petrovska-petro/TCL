@@ -14,7 +14,7 @@ def test_tcl_swaps(tcl, pool, swapper, pool_tokens, users, lp_user, swapDirectio
     print('Pre-swap: ', tcl.getTreasuryAmountAtBound(boundRange))
 
     # Swap action
-    swapAmt = [750000e18, 25e18][swapDirection] * [0.5, 2][whale]
+    swapAmt = [140857e18, 25e18][swapDirection] * [0.5, 2][whale]
     print('swapAmt: ', swapAmt)
     print("pool_tokens[0]: ", pool_tokens[0].balanceOf(lp_user))
     print("pool_tokens[1]: ", pool_tokens[1].balanceOf(lp_user))
@@ -28,27 +28,28 @@ def test_tcl_swaps(tcl, pool, swapper, pool_tokens, users, lp_user, swapDirectio
 
     print('Post-swap: ', tcl.getTreasuryAmountAtBound(boundRange))
 
+    tickSpacing = 60
+    tickLower = (tick_after - 5000) // tickSpacing * tickSpacing
+    tickUpper = (tick_after + 5000) // tickSpacing * tickSpacing
+
+    tcl.controlLiquidity(
+        tickLower, tickUpper, boundRange, True, {"from": users[0]})
+
+    # verify fees where sent succesfully to treasury address on burn&collect combo
+    balance0_plus_fee = pool_tokens[0].balanceOf(users[3])
+    balance1_plus_fee = pool_tokens[1].balanceOf(users[3])
+
+    if swapDirection:
+        assert balance0_plus_fee > 0
+    else:
+        assert balance1_plus_fee > 0
+
 
 @pytest.mark.parametrize("swapDirection", [False, True])
-def test_tcl_swaps_day(tcl, pool, swapper, pool_tokens, tcl_positions_info, manager, users, lp_user, swapDirection):
-    token0Amt = pool_tokens[0].balanceOf(users[3])
-    token1Amt = pool_tokens[1].balanceOf(users[3])
-
+def test_tcl_swaps_day(tcl, pool, swapper, pool_tokens, tcl_positions_info, users, lp_user, swapDirection):
     init_tcl(tcl, pool, pool_tokens, users)
     price = tickToPrice(pool)
-    current_tick = pool.slot0()[1]
-
-    print('Pre-swap price and tick: ', tickToPrice(pool), current_tick)
-
-    print(tickToPrice(pool))
-    tickSpacing = tcl.tickSpacing()
-    range_width = 4000
-    tickLower = (current_tick - range_width) // tickSpacing * tickSpacing
-    tickUpper = (current_tick + range_width) // tickSpacing * tickSpacing
     boundRange = 1
-
-    tcl.reinstateBound(tickLower, tickUpper, token0Amt,
-                       token1Amt, boundRange, {"from": manager})
 
     print('Pre-swap activity: ', tcl.getTreasuryAmountAtBound(boundRange))
 
